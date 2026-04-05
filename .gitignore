@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.tmp
+*.temp
+TestResults/

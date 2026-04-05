@@ -1,0 +1,115 @@
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3.5rem;
+    height: 2.5rem;
+    color: white;
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.72%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler:checked {
+    background-color: rgba(255, 255, 255, 0.24);
+}
+
+.top-row {
+    min-height: 4rem;
+    background-color: transparent;
+}
+
+.navbar-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+    text-decoration: none;
+}
+
+.brand-tag {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(253, 224, 71, 0.9);
+}
+
+.bi {
+    display: inline-block;
+    position: relative;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+    top: -1px;
+    background-size: cover;
+}
+
+.bi-house-door-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-house-door-fill' viewBox='0 0 16 16'%3E%3Cpath d='M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5Z'/%3E%3C/svg%3E");
+}
+
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.35rem;
+}
+
+.nav-item:first-of-type {
+    padding-top: 1rem;
+}
+
+.nav-item ::deep .nav-link {
+    color: #d7d7d7;
+    background: none;
+    border: none;
+    border-radius: 14px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+    width: 100%;
+}
+
+.nav-item ::deep a.active {
+    background: linear-gradient(135deg, rgba(253, 224, 71, 0.28), rgba(255, 255, 255, 0.18));
+    color: white;
+}
+
+.nav-item ::deep .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: white;
+}
+
+.sidebar-copy {
+    margin-top: 1.2rem;
+    color: rgba(226, 232, 240, 0.82);
+    font-size: 0.88rem;
+    line-height: 1.55;
+}
+
+.sidebar-copy code {
+    color: #fde68a;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+}
+
+.nav-scrollable {
+    display: none;
+}
+
+.navbar-toggler:checked ~ .nav-scrollable {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-scrollable {
+        display: block;
+        height: calc(100vh - 4rem);
+        overflow-y: auto;
+    }
+}

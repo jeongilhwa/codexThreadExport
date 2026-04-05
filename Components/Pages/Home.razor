@@ -1,0 +1,242 @@
+@page "/"
+@inject CodexThreadStore ThreadStore
+
+<PageTitle>Codex Thread Browser</PageTitle>
+
+<section class="hero">
+    <div>
+        <p class="eyebrow">Local Codex Utility</p>
+        <h1>Codex Thread Browser</h1>
+        <p class="lede">
+            Load the current thread index from your local <code>.codex</code> folder, inspect prompt history,
+            and export a fresh snapshot back to your Desktop with one click.
+        </p>
+    </div>
+
+    <div class="hero-actions">
+        <button class="action primary" @onclick="LoadThreadsAsync" disabled="@_isBusy">
+            @_loadButtonText
+        </button>
+        <button class="action secondary" @onclick="ExportSnapshotAsync" disabled="@(_isBusy || _snapshot is null)">
+            @_exportButtonText
+        </button>
+    </div>
+</section>
+
+<section class="summary-grid">
+    <article class="summary-card">
+        <span class="label">Codex Home</span>
+        <strong>@(_snapshot?.CodexHome ?? _defaultCodexHome)</strong>
+    </article>
+    <article class="summary-card">
+        <span class="label">Threads</span>
+        <strong>@(_snapshot?.Threads.Count ?? 0)</strong>
+    </article>
+    <article class="summary-card">
+        <span class="label">Parsed Entries</span>
+        <strong>@(_snapshot?.ParsedHistoryEntryCount ?? 0)</strong>
+    </article>
+    <article class="summary-card">
+        <span class="label">Last Refresh</span>
+        <strong>@FormatMoment(_snapshot?.LoadedAt)</strong>
+    </article>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(_statusMessage))
+{
+    <p class="status-banner">@_statusMessage</p>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <p class="error-banner">@_errorMessage</p>
+}
+
+@if (_snapshot is null)
+{
+    <section class="empty-state">
+        <h2>No snapshot loaded yet</h2>
+        <p>Press <strong>Load Threads</strong> to read the current thread list from <code>.codex</code>.</p>
+    </section>
+}
+else
+{
+    <section class="workspace">
+        <div class="thread-list-panel">
+            <header class="panel-header">
+                <div>
+                    <p class="panel-kicker">Thread List</p>
+                    <h2>Available Sessions</h2>
+                </div>
+                <span class="pill">@_snapshot.Threads.Count total</span>
+            </header>
+
+            <div class="thread-list">
+                @foreach (var thread in _snapshot.Threads)
+                {
+                    var isSelected = thread.SessionId == _selectedThread?.SessionId;
+                    <button class="thread-card @(isSelected ? "selected" : null)"
+                            @onclick="() => SelectThread(thread)">
+                        <div class="thread-card-header">
+                            <strong>@thread.ThreadName</strong>
+                            <span>@thread.MessageCount msgs</span>
+                        </div>
+                        <div class="thread-meta">
+                            <span>@ShortId(thread.SessionId)</span>
+                            <span>@FormatMoment(thread.LastActivityAt)</span>
+                        </div>
+                        <p>@thread.Preview</p>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="thread-detail-panel">
+            @if (_selectedThread is null)
+            {
+                <div class="empty-state compact">
+                    <h2>No thread selected</h2>
+                    <p>Select a thread on the left to inspect its prompt history.</p>
+                </div>
+            }
+            else
+            {
+                <header class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Thread Detail</p>
+                        <h2>@_selectedThread.ThreadName</h2>
+                    </div>
+                    <span class="pill">@_selectedThread.MessageCount messages</span>
+                </header>
+
+                <div class="detail-summary">
+                    <div>
+                        <span class="label">Session Id</span>
+                        <strong>@_selectedThread.SessionId</strong>
+                    </div>
+                    <div>
+                        <span class="label">Indexed Update</span>
+                        <strong>@FormatMoment(_selectedThread.IndexedUpdatedAt)</strong>
+                    </div>
+                    <div>
+                        <span class="label">First Message</span>
+                        <strong>@FormatMoment(_selectedThread.FirstMessageAt)</strong>
+                    </div>
+                    <div>
+                        <span class="label">Last Message</span>
+                        <strong>@FormatMoment(_selectedThread.LastMessageAt)</strong>
+                    </div>
+                </div>
+
+                <div class="message-list">
+                    @if (_selectedThread.Messages.Count == 0)
+                    {
+                        <div class="empty-state compact">
+                            <h2>No prompt history</h2>
+                            <p>This thread is indexed locally, but no matching entries were found in <code>history.jsonl</code>.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var message in _selectedThread.Messages)
+                        {
+                            <article class="message-card">
+                                <header>
+                                    <span>@message.UtcTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                    <span>@message.UnixTimestamp</span>
+                                </header>
+                                <pre>@message.Text</pre>
+                            </article>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private readonly string _defaultCodexHome = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        ".codex");
+
+    private CodexThreadSnapshot? _snapshot;
+    private CodexThreadItem? _selectedThread;
+    private bool _isLoading;
+    private bool _isExporting;
+    private string? _statusMessage;
+    private string? _errorMessage;
+
+    private bool _isBusy => _isLoading || _isExporting;
+
+    private string _loadButtonText => _isLoading ? "Loading..." : "Load Threads";
+
+    private string _exportButtonText => _isExporting ? "Exporting..." : "Export Snapshot";
+
+    private async Task LoadThreadsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _statusMessage = "Reading current thread metadata from .codex...";
+
+        try
+        {
+            _snapshot = await ThreadStore.LoadSnapshotAsync();
+            _selectedThread = _snapshot.Threads.FirstOrDefault();
+            _statusMessage = $"Loaded {_snapshot.Threads.Count} threads from {_snapshot.CodexHome}.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _statusMessage = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ExportSnapshotAsync()
+    {
+        if (_snapshot is null)
+        {
+            return;
+        }
+
+        _isExporting = true;
+        _errorMessage = null;
+        _statusMessage = "Writing a new snapshot folder to your Desktop...";
+
+        try
+        {
+            var result = await ThreadStore.ExportSnapshotAsync(_snapshot);
+            _statusMessage = $"Exported {result.ThreadCount} threads to {result.OutputDirectory}.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _statusMessage = null;
+        }
+        finally
+        {
+            _isExporting = false;
+        }
+    }
+
+    private void SelectThread(CodexThreadItem thread)
+    {
+        _selectedThread = thread;
+    }
+
+    private static string ShortId(string sessionId)
+    {
+        return sessionId.Length <= 12
+            ? sessionId
+            : $"{sessionId[..8]}...{sessionId[^4..]}";
+    }
+
+    private static string FormatMoment(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "n/a";
+    }
+}
