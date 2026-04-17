@@ -1,5 +1,6 @@
 @page "/"
 @inject CodexThreadStore ThreadStore
+@inject ICodexTransferPicker TransferPicker
 
 <PageTitle>Codex Thread Browser</PageTitle>
 
@@ -9,7 +10,7 @@
         <h1>Codex Thread Browser</h1>
         <p class="lede">
             Load the current thread index from your local <code>.codex</code> folder, inspect prompt history,
-            and export a fresh snapshot back to your Desktop with one click.
+            export a portable snapshot to any folder, then import or restore that snapshot on another machine.
         </p>
     </div>
 
@@ -20,13 +21,23 @@
         <button class="action secondary" @onclick="ExportSnapshotAsync" disabled="@(_isBusy || _snapshot is null)">
             @_exportButtonText
         </button>
+        <button class="action tertiary" @onclick="ImportSnapshotAsync" disabled="@_isBusy">
+            @_importButtonText
+        </button>
+        <button class="action tertiary" @onclick="RestoreImportedSnapshotAsync" disabled="@(_isBusy || !_canRestoreImportedRawFiles)">
+            @_restoreButtonText
+        </button>
     </div>
 </section>
 
 <section class="summary-grid">
     <article class="summary-card">
-        <span class="label">Codex Home</span>
-        <strong>@(_snapshot?.CodexHome ?? _defaultCodexHome)</strong>
+        <span class="label">Snapshot Mode</span>
+        <strong>@_snapshotSourceMode</strong>
+    </article>
+    <article class="summary-card">
+        <span class="label">Snapshot Path</span>
+        <strong>@CurrentSnapshotPath</strong>
     </article>
     <article class="summary-card">
         <span class="label">Threads</span>
@@ -41,6 +52,14 @@
         <strong>@FormatMoment(_snapshot?.LoadedAt)</strong>
     </article>
 </section>
+
+@if (_canRestoreImportedRawFiles)
+{
+    <section class="transfer-note">
+        <strong>Imported snapshot is ready.</strong>
+        This package can be browsed in the app now, and its raw <code>.codex</code> files can be restored into any target folder with the restore button above. Matching files in the chosen folder are overwritten.
+    </section>
+}
 
 @if (!string.IsNullOrWhiteSpace(_statusMessage))
 {
@@ -140,8 +159,9 @@ else
                     {
                         @foreach (var message in _selectedThread.Messages)
                         {
-                            <article class="message-card">
+                            <article class="message-card @(message.IsAssistant ? "assistant" : "user")">
                                 <header>
+                                    <span>@message.DisplayRole</span>
                                     <span>@message.UtcTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</span>
                                     <span>@message.UnixTimestamp</span>
                                 </header>
@@ -164,14 +184,27 @@ else
     private CodexThreadItem? _selectedThread;
     private bool _isLoading;
     private bool _isExporting;
+    private bool _isImporting;
+    private bool _isRestoring;
     private string? _statusMessage;
     private string? _errorMessage;
+    private string _snapshotSourceMode = "Local .codex";
+    private string? _snapshotSourcePath;
+    private string? _importedPackageRoot;
 
-    private bool _isBusy => _isLoading || _isExporting;
+    private bool _isBusy => _isLoading || _isExporting || _isImporting || _isRestoring;
 
-    private string _loadButtonText => _isLoading ? "Loading..." : "Load Threads";
+    private bool _canRestoreImportedRawFiles => !string.IsNullOrWhiteSpace(_importedPackageRoot);
 
-    private string _exportButtonText => _isExporting ? "Exporting..." : "Export Snapshot";
+    private string CurrentSnapshotPath => _snapshotSourcePath ?? _defaultCodexHome;
+
+    private string _loadButtonText => _isLoading ? "Loading..." : "Load Local Threads";
+
+    private string _exportButtonText => _isExporting ? "Exporting..." : "Export Snapshot...";
+
+    private string _importButtonText => _isImporting ? "Importing..." : "Import Snapshot...";
+
+    private string _restoreButtonText => _isRestoring ? "Restoring..." : "Restore Imported Raw Files...";
 
     private async Task LoadThreadsAsync()
     {
@@ -181,9 +214,9 @@ else
 
         try
         {
-            _snapshot = await ThreadStore.LoadSnapshotAsync();
-            _selectedThread = _snapshot.Threads.FirstOrDefault();
-            _statusMessage = $"Loaded {_snapshot.Threads.Count} threads from {_snapshot.CodexHome}.";
+            var snapshot = await ThreadStore.LoadSnapshotAsync();
+            ApplySnapshot(snapshot, "Local .codex", snapshot.CodexHome);
+            _statusMessage = $"Loaded {snapshot.Threads.Count} threads from {snapshot.CodexHome}.";
         }
         catch (Exception ex)
         {
@@ -205,11 +238,19 @@ else
 
         _isExporting = true;
         _errorMessage = null;
-        _statusMessage = "Writing a new snapshot folder to your Desktop...";
+        _statusMessage = "Choose a destination folder for the exported snapshot...";
 
         try
         {
-            var result = await ThreadStore.ExportSnapshotAsync(_snapshot);
+            var exportDirectory = await TransferPicker.PickExportDestinationDirectoryAsync();
+            if (string.IsNullOrWhiteSpace(exportDirectory))
+            {
+                _statusMessage = "Export canceled.";
+                return;
+            }
+
+            _statusMessage = $"Writing a portable snapshot under {exportDirectory}...";
+            var result = await ThreadStore.ExportSnapshotAsync(_snapshot, exportDirectory);
             _statusMessage = $"Exported {result.ThreadCount} threads to {result.OutputDirectory}.";
         }
         catch (Exception ex)
@@ -223,9 +264,84 @@ else
         }
     }
 
+    private async Task ImportSnapshotAsync()
+    {
+        _isImporting = true;
+        _errorMessage = null;
+        _statusMessage = "Choose an exported manifest.json file to import...";
+
+        try
+        {
+            var manifestPath = await TransferPicker.PickImportManifestFileAsync();
+            if (string.IsNullOrWhiteSpace(manifestPath))
+            {
+                _statusMessage = "Import canceled.";
+                return;
+            }
+
+            _statusMessage = $"Loading exported snapshot from {manifestPath}...";
+            var imported = await ThreadStore.LoadExportedSnapshotAsync(manifestPath);
+            ApplySnapshot(imported.Snapshot, "Imported snapshot", imported.PackageRoot, imported.PackageRoot);
+            _statusMessage = $"Loaded {imported.Snapshot.Threads.Count} threads from {imported.PackageRoot}. Use restore if you want to copy the raw files into another .codex folder.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _statusMessage = null;
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    private async Task RestoreImportedSnapshotAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_importedPackageRoot))
+        {
+            return;
+        }
+
+        _isRestoring = true;
+        _errorMessage = null;
+        _statusMessage = "Choose the target .codex folder to receive the imported raw files. Matching files will be overwritten...";
+
+        try
+        {
+            var destinationDirectory = await TransferPicker.PickRestoreDestinationDirectoryAsync();
+            if (string.IsNullOrWhiteSpace(destinationDirectory))
+            {
+                _statusMessage = "Restore canceled.";
+                return;
+            }
+
+            _statusMessage = $"Copying raw snapshot files into {destinationDirectory}...";
+            var result = await ThreadStore.RestoreExportAsync(_importedPackageRoot, destinationDirectory);
+            _statusMessage = $"Restored {result.CopiedFileCount} files into {result.DestinationDirectory}.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _statusMessage = null;
+        }
+        finally
+        {
+            _isRestoring = false;
+        }
+    }
+
     private void SelectThread(CodexThreadItem thread)
     {
         _selectedThread = thread;
+    }
+
+    private void ApplySnapshot(CodexThreadSnapshot snapshot, string sourceMode, string sourcePath, string? importedPackageRoot = null)
+    {
+        _snapshot = snapshot;
+        _selectedThread = snapshot.Threads.FirstOrDefault();
+        _snapshotSourceMode = sourceMode;
+        _snapshotSourcePath = sourcePath;
+        _importedPackageRoot = importedPackageRoot;
     }
 
     private static string ShortId(string sessionId)

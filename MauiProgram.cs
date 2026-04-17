@@ -17,6 +17,7 @@ public static class MauiProgram
 
 		builder.Services.AddMauiBlazorWebView();
 		builder.Services.AddSingleton<CodexThreadStore>();
+		builder.Services.AddSingleton<ICodexTransferPicker, CodexTransferPicker>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

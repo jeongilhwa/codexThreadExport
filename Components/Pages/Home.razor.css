@@ -74,6 +74,12 @@
     color: #f9fafb;
 }
 
+.action.tertiary {
+    background: rgba(15, 23, 42, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+}
+
 .summary-grid {
     margin-top: 1.25rem;
     display: grid;
@@ -111,6 +117,20 @@
 .error-banner {
     margin-top: 1rem;
     padding: 0.95rem 1.1rem;
+}
+
+.transfer-note {
+    margin-top: 1rem;
+    padding: 0.95rem 1.1rem;
+    border-radius: 22px;
+    background: rgba(255, 248, 219, 0.94);
+    border: 1px solid rgba(217, 119, 6, 0.2);
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.08);
+    color: #7c2d12;
+}
+
+.transfer-note strong {
+    margin-right: 0.45rem;
 }
 
 .status-banner {
@@ -259,6 +279,18 @@
     border: 1px solid rgba(20, 33, 61, 0.07);
 }
 
+.message-card.user {
+    background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(219, 234, 254, 0.9));
+    border-color: rgba(37, 99, 235, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.message-card.assistant {
+    background: linear-gradient(180deg, rgba(255, 247, 237, 0.98), rgba(255, 237, 213, 0.92));
+    border-color: rgba(234, 88, 12, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
 .message-card header {
     display: flex;
     justify-content: space-between;
@@ -266,6 +298,26 @@
     color: #64748b;
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
+}
+
+.message-card header span:first-child {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.message-card.user header span:first-child {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+}
+
+.message-card.assistant header span:first-child {
+    background: rgba(234, 88, 12, 0.12);
+    color: #c2410c;
 }
 
 .message-card pre {

@@ -42,7 +42,13 @@ public sealed record CodexThreadItem(
 public sealed record CodexThreadMessage(
     long UnixTimestamp,
     DateTimeOffset UtcTimestamp,
-    string Text);
+    string Role,
+    string Text)
+{
+    public bool IsAssistant => string.Equals(Role, "assistant", StringComparison.OrdinalIgnoreCase);
+
+    public string DisplayRole => IsAssistant ? "Assistant" : "User";
+}
 
 public sealed record CodexExportResult(
     string OutputDirectory,
