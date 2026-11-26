@@ -26,6 +26,10 @@ dotnet build .\CodexThreadViewer.csproj -f net10.0-windows10.0.19041.0 -v minima
 
 ## Run
 
+Open `CodexThreadViewer.sln` in Visual Studio, select **Windows Machine** as the launch target, and press **F5**.
+
+To run from PowerShell instead:
+
 ```powershell
 dotnet run --project .\CodexThreadViewer.csproj -f net10.0-windows10.0.19041.0
 ```

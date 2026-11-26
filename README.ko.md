@@ -26,6 +26,10 @@ dotnet build .\CodexThreadViewer.csproj -f net10.0-windows10.0.19041.0 -v minima
 
 ## 실행
 
+Visual Studio에서 `CodexThreadViewer.sln`을 열고, 시작 대상을 **Windows Machine**으로 선택한 다음 **F5**를 누른다.
+
+PowerShell에서는 다음 명령으로 실행할 수 있다.
+
 ```powershell
 dotnet run --project .\CodexThreadViewer.csproj -f net10.0-windows10.0.19041.0
 ```

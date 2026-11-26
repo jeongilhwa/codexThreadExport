@@ -261,23 +261,35 @@ public sealed class CodexThreadStore
             throw new FileNotFoundException("history.jsonl was not found.", historyPath);
         }
 
-        List<SessionIndexRow> indexedThreads;
+        var indexedThreads = new List<SessionIndexRow>();
         Dictionary<string, List<CodexThreadMessage>> sessionMessages = new(StringComparer.Ordinal);
 
         if (File.Exists(sessionIndexPath))
         {
             indexedThreads = await ReadSessionIndexAsync(sessionIndexPath, cancellationToken);
         }
-        else if (Directory.Exists(sessionsPath))
+
+        if (Directory.Exists(sessionsPath))
         {
             var sessionParseResults = await ReadSessionsDirectoryAsync(sessionsPath, cancellationToken);
-            indexedThreads = sessionParseResults.Select(result => result.IndexRow).ToList();
-            sessionMessages = sessionParseResults.ToDictionary(
-                result => result.IndexRow.Id,
-                result => result.Messages,
-                StringComparer.Ordinal);
+            var indexedIds = indexedThreads.Select(row => row.Id).ToHashSet(StringComparer.Ordinal);
+
+            foreach (var result in sessionParseResults)
+            {
+                if (indexedIds.Add(result.IndexRow.Id))
+                {
+                    indexedThreads.Add(result.IndexRow);
+                }
+
+                if (!sessionMessages.TryGetValue(result.IndexRow.Id, out var existingMessages) ||
+                    result.Messages.Count > existingMessages.Count)
+                {
+                    sessionMessages[result.IndexRow.Id] = result.Messages;
+                }
+            }
         }
-        else
+
+        if (!File.Exists(sessionIndexPath) && !Directory.Exists(sessionsPath))
         {
             throw new FileNotFoundException(
                 "Neither session_index.jsonl nor the sessions folder was found.",
@@ -288,6 +300,7 @@ public sealed class CodexThreadStore
 
         var orderedSessionIds = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var indexedById = new Dictionary<string, SessionIndexRow>(StringComparer.Ordinal);
 
         foreach (var indexedThread in indexedThreads
                      .OrderByDescending(item => item.UpdatedAt ?? DateTimeOffset.MinValue))
@@ -295,6 +308,7 @@ public sealed class CodexThreadStore
             if (seen.Add(indexedThread.Id))
             {
                 orderedSessionIds.Add(indexedThread.Id);
+                indexedById.Add(indexedThread.Id, indexedThread);
             }
         }
 
@@ -307,7 +321,6 @@ public sealed class CodexThreadStore
             }
         }
 
-        var indexedById = indexedThreads.ToDictionary(item => item.Id, StringComparer.Ordinal);
         var threads = new List<CodexThreadItem>(orderedSessionIds.Count);
 
         foreach (var sessionId in orderedSessionIds)
