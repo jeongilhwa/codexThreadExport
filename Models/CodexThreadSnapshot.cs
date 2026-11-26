@@ -15,7 +15,11 @@ public sealed record CodexThreadItem(
     DateTimeOffset? IndexedUpdatedAt,
     DateTimeOffset? FirstMessageAt,
     DateTimeOffset? LastMessageAt,
-    IReadOnlyList<CodexThreadMessage> Messages)
+    IReadOnlyList<CodexThreadMessage> Messages,
+    string? WorkingDirectory,
+    string? SessionFilePath,
+    string? CreatorAccountId,
+    string? CreatorUserId)
 {
     public int MessageCount => Messages.Count;
 

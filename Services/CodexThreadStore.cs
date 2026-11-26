@@ -262,7 +262,7 @@ public sealed class CodexThreadStore
         }
 
         var indexedThreads = new List<SessionIndexRow>();
-        Dictionary<string, List<CodexThreadMessage>> sessionMessages = new(StringComparer.Ordinal);
+        Dictionary<string, SessionParseResult> sessionRecords = new(StringComparer.Ordinal);
 
         if (File.Exists(sessionIndexPath))
         {
@@ -281,10 +281,10 @@ public sealed class CodexThreadStore
                     indexedThreads.Add(result.IndexRow);
                 }
 
-                if (!sessionMessages.TryGetValue(result.IndexRow.Id, out var existingMessages) ||
-                    result.Messages.Count > existingMessages.Count)
+                if (!sessionRecords.TryGetValue(result.IndexRow.Id, out var existingRecord) ||
+                    result.Messages.Count > existingRecord.Messages.Count)
                 {
-                    sessionMessages[result.IndexRow.Id] = result.Messages;
+                    sessionRecords[result.IndexRow.Id] = result;
                 }
             }
         }
@@ -326,7 +326,8 @@ public sealed class CodexThreadStore
         foreach (var sessionId in orderedSessionIds)
         {
             indexedById.TryGetValue(sessionId, out var indexedThread);
-            sessionMessages.TryGetValue(sessionId, out var threadMessages);
+            sessionRecords.TryGetValue(sessionId, out var sessionRecord);
+            var threadMessages = sessionRecord?.Messages;
             if (threadMessages is null || threadMessages.Count == 0)
             {
                 historyMessages.TryGetValue(sessionId, out threadMessages);
@@ -347,7 +348,11 @@ public sealed class CodexThreadStore
                 indexedThread?.UpdatedAt,
                 orderedMessages.FirstOrDefault()?.UtcTimestamp,
                 orderedMessages.LastOrDefault()?.UtcTimestamp,
-                orderedMessages));
+                orderedMessages,
+                sessionRecord?.WorkingDirectory,
+                sessionRecord?.SessionFilePath,
+                sessionRecord?.CreatorAccountId,
+                sessionRecord?.CreatorUserId));
         }
 
         return new CodexThreadSnapshot(
@@ -417,6 +422,9 @@ public sealed class CodexThreadStore
     {
         string? sessionId = null;
         string? threadName = null;
+        string? workingDirectory = null;
+        string? creatorAccountId = null;
+        string? creatorUserId = null;
         DateTimeOffset? updatedAt = null;
         var messages = new List<CodexThreadMessage>();
 
@@ -466,6 +474,10 @@ public sealed class CodexThreadStore
                         updatedAt ??= ParseDateTimeOffset(payloadTimestampElement.GetString());
                     }
 
+                    workingDirectory ??= ReadNonEmptyString(payloadElement, "cwd");
+                    creatorAccountId ??= ReadNonEmptyString(payloadElement, "creator_account_id");
+                    creatorUserId ??= ReadNonEmptyString(payloadElement, "creator_user_id");
+
                     continue;
                 }
 
@@ -497,7 +509,22 @@ public sealed class CodexThreadStore
 
         return new SessionParseResult(
             new SessionIndexRow(sessionId, threadName, updatedAt),
-            messages);
+            messages,
+            workingDirectory,
+            sessionFilePath,
+            creatorAccountId,
+            creatorUserId);
+    }
+
+    private static string? ReadNonEmptyString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var text = value.GetString();
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
     private static async IAsyncEnumerable<string> ReadLinesWithSharedAccessAsync(
@@ -845,5 +872,9 @@ public sealed class CodexThreadStore
 
     private sealed record SessionParseResult(
         SessionIndexRow IndexRow,
-        List<CodexThreadMessage> Messages);
+        List<CodexThreadMessage> Messages,
+        string? WorkingDirectory,
+        string SessionFilePath,
+        string? CreatorAccountId,
+        string? CreatorUserId);
 }

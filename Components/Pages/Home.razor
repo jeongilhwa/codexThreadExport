@@ -104,6 +104,16 @@ else
                             <span>@ShortId(thread.SessionId)</span>
                             <span>@FormatMoment(thread.LastActivityAt)</span>
                         </div>
+                        <div class="thread-origin">
+                            <div class="thread-origin-row">
+                                <span>Folder</span>
+                                <code title="@DisplayValue(thread.WorkingDirectory)">@DisplayValue(thread.WorkingDirectory)</code>
+                            </div>
+                            <div class="thread-origin-row">
+                                <span>Account</span>
+                                <code title="@DisplayValue(thread.CreatorAccountId)">@(thread.CreatorAccountId is null ? "Not recorded" : ShortId(thread.CreatorAccountId))</code>
+                            </div>
+                        </div>
                         <p>@thread.Preview</p>
                     </button>
                 }
@@ -134,8 +144,24 @@ else
                         <strong>@_selectedThread.SessionId</strong>
                     </div>
                     <div>
+                        <span class="label">Account ID</span>
+                        <strong class="detail-identifier">@DisplayValue(_selectedThread.CreatorAccountId)</strong>
+                    </div>
+                    <div>
+                        <span class="label">User ID</span>
+                        <strong class="detail-identifier">@DisplayValue(_selectedThread.CreatorUserId)</strong>
+                    </div>
+                    <div>
                         <span class="label">Indexed Update</span>
                         <strong>@FormatMoment(_selectedThread.IndexedUpdatedAt)</strong>
+                    </div>
+                    <div class="detail-wide">
+                        <span class="label">Working Folder</span>
+                        <strong class="detail-path">@DisplayValue(_selectedThread.WorkingDirectory)</strong>
+                    </div>
+                    <div class="detail-wide">
+                        <span class="label">@(_importedPackageRoot is null ? "Session File" : "Session File in Snapshot")</span>
+                        <strong class="detail-path">@DisplayValue(_selectedThread.SessionFilePath)</strong>
                     </div>
                     <div>
                         <span class="label">First Message</span>
@@ -350,6 +376,8 @@ else
             ? sessionId
             : $"{sessionId[..8]}...{sessionId[^4..]}";
     }
+
+    private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "Not recorded" : value;
 
     private static string FormatMoment(DateTimeOffset? value)
     {

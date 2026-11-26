@@ -241,6 +241,37 @@
     line-height: 1.45;
 }
 
+.thread-origin {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.8rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(20, 33, 61, 0.09);
+}
+
+.thread-origin-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+    min-width: 0;
+    color: #475569;
+    font-size: 0.76rem;
+}
+
+.thread-origin-row span {
+    flex: 0 0 3.4rem;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.thread-origin-row code {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #1d3557;
+}
+
 .detail-summary {
     display: grid;
     gap: 0.9rem;
@@ -261,6 +292,17 @@
     color: #111827;
     font-size: 0.95rem;
     line-height: 1.45;
+}
+
+.detail-summary .detail-wide {
+    grid-column: 1 / -1;
+}
+
+.detail-identifier,
+.detail-path {
+    overflow-wrap: anywhere;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 0.86rem !important;
 }
 
 .message-list {
